@@ -6,6 +6,7 @@ import {
   Copy,
   Eye,
   History,
+  House,
   Keyboard,
   LayoutGrid,
   Moon,
@@ -19,12 +20,16 @@ import {
   Sun,
   Trash2,
   VenetianMask,
-  Globe2
+  Globe2,
+  KeyRound,
+  Waypoints
 } from 'lucide-react'
 import { selectActiveTab, useBrowser } from '@/state/browser'
 import { useSettings } from '@/state/settings'
 import { useUI } from '@/state/ui'
-import { clearSpace, copyActiveUrl, toggleSplit } from '@/browser/actions'
+import { clearSpace, copyActiveUrl, toggleHome, toggleSplit } from '@/browser/actions'
+import { toggleFavorite } from '@/browser/favorites'
+import { findFavorite } from '@shared/favorites'
 import { page } from '@/browser/registry'
 import { openOverview } from '@/features/overview/openOverview'
 
@@ -43,6 +48,7 @@ export function getCommands(): Command[] {
   const tab = selectActiveTab(useBrowser.getState())
   const settings = useSettings.getState()
   const list: Command[] = [
+    ...(tab ? [{ id: 'home', title: 'Go Home — tabs stay open', keywords: 'start new tab page background', hint: '⇧⌘H', icon: <House size={15} />, run: () => toggleHome() }] : []),
     { id: 'gravity-well', title: 'Gravity Well — see all tabs', keywords: 'overview tabs grid expose', hint: '⇧⌘\\', icon: <LayoutGrid size={15} />, run: () => void openOverview() },
     { id: 'new-space', title: 'New Space', keywords: 'workspace create', hint: '⌥⌘N', icon: <Plus size={15} />, run: () => useBrowser.getState().addSpace() },
     { id: 'new-private', title: 'New Private Space', keywords: 'incognito private', hint: '⇧⌘N', icon: <VenetianMask size={15} />, run: () => useBrowser.getState().addSpace({ private: true }) },
@@ -50,8 +56,15 @@ export function getCommands(): Command[] {
     { id: 'sidebar', title: 'Toggle Sidebar', keywords: 'hide show', hint: '⌘S', icon: <PanelLeft size={15} />, run: () => void settings.update({ sidebarCollapsed: !settings.sidebarCollapsed }) },
     { id: 'split', title: 'Toggle Split View', keywords: 'side by side two', hint: '⌥⌘\\', icon: <Columns2 size={15} />, run: () => toggleSplit() },
     { id: 'reopen', title: 'Reopen Closed Tab', keywords: 'undo restore', hint: '⇧⌘T', icon: <RotateCcw size={15} />, run: () => useBrowser.getState().reopenClosed() },
+    { id: 'passwords', title: 'Passwords', keywords: 'password login sign in keychain vault autofill credentials', icon: <KeyRound size={15} />, run: () => ui().set({ settingsOpen: true, settingsPage: 'passwords' }) },
     { id: 'clear-space', title: 'Clear Space — archive unpinned tabs', keywords: 'sweep archive close all', icon: <Archive size={15} />, run: () => clearSpace() },
     { id: 'shield', title: settings.shield ? 'Turn Shield Off' : 'Turn Shield On', keywords: 'adblock tracker privacy', icon: <Shield size={15} />, run: () => void settings.update({ shield: !settings.shield }) },
+    ...(settings.tunnel === 'off'
+      ? [
+          { id: 'tunnel-all', title: 'Tunnel All Tabs Through Tor', keywords: 'vpn tor proxy ip privacy anonymous', icon: <Waypoints size={15} />, run: () => void settings.update({ tunnel: 'all' }) },
+          { id: 'tunnel-private', title: 'Tunnel Private Spaces Through Tor', keywords: 'vpn tor proxy ip privacy anonymous incognito', icon: <Waypoints size={15} />, run: () => void settings.update({ tunnel: 'private' }) }
+        ]
+      : [{ id: 'tunnel-off', title: 'Turn Tunnel Off', keywords: 'vpn tor proxy ip', icon: <Waypoints size={15} />, run: () => void settings.update({ tunnel: 'off' }) }]),
     {
       id: 'theme',
       title: settings.theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme',
@@ -59,6 +72,7 @@ export function getCommands(): Command[] {
       icon: settings.theme === 'light' ? <Moon size={15} /> : <Sun size={15} />,
       run: () => void settings.update({ theme: settings.theme === 'light' ? 'dark' : 'light' })
     },
+    { id: 'add-favorite', title: 'Add a Favorite…', keywords: 'pin page home shortcut bookmark star tile', icon: <Star size={15} />, run: () => ui().openCommand('pin') },
     { id: 'settings', title: 'Settings', keywords: 'preferences options', hint: '⌘,', icon: <Settings2 size={15} />, run: () => ui().set({ settingsOpen: true }) },
     { id: 'shortcuts', title: 'Keyboard Shortcuts', keywords: 'help cheatsheet keys', hint: '⌘/', icon: <Keyboard size={15} />, run: () => ui().set({ cheatsheet: true }) },
     {
@@ -82,16 +96,18 @@ export function getCommands(): Command[] {
   if (tab) {
     list.push(
       { id: 'copy-url', title: 'Copy Page URL', keywords: 'link share', hint: '⇧⌘C', icon: <Copy size={15} />, run: () => copyActiveUrl() },
-      {
-        id: 'favorite',
-        title: 'Add Page to Favorites',
-        keywords: 'bookmark star',
-        icon: <Star size={15} />,
-        run: () => {
-          settings.addFavorite({ url: tab.url, title: tab.title, favicon: tab.favicon })
-          ui().toast('Added to Favorites', 'check')
-        }
-      },
+      ...(/^https?:/.test(tab.url)
+        ? [
+            {
+              id: 'favorite',
+              title: findFavorite(settings.favorites, tab.url) ? 'Remove Page from Favorites' : 'Add Page to Favorites',
+              keywords: 'bookmark star pin home shortcut',
+              hint: '⇧⌘D',
+              icon: <Star size={15} />,
+              run: () => toggleFavorite(tab)
+            }
+          ]
+        : []),
       { id: 'pin', title: tab.pinned ? 'Unpin Tab' : 'Pin Tab', keywords: 'keep', hint: '⌘D', icon: <Pin size={15} />, run: () => useBrowser.getState().togglePin(tab.id) },
       { id: 'devtools', title: 'Developer Tools', keywords: 'inspect console', hint: '⌥⌘I', icon: <Code2 size={15} />, run: () => page.devtools(tab.id) },
       { id: 'history-back', title: 'Go Back', keywords: 'previous', hint: '⌘[', icon: <History size={15} />, run: () => page.back(tab.id) }

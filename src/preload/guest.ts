@@ -1,12 +1,16 @@
 /// <reference lib="dom" />
 /**
  * The only script Gravity injects into web pages. It runs in an isolated world
- * with no access to the page's JS, and it only reports two things to the host:
+ * with no access to the page's JS. It reports two things to the host:
  *  - horizontal overscroll (for two-finger swipe back/forward)
  *  - shift-clicks on links (for Peek)
+ * and fills and offers to save passwords (see autofill.ts).
  */
 import { ipcRenderer } from 'electron'
 import { GUEST } from '../shared/ipc'
+import { installAutofill } from './autofill'
+
+installAutofill()
 
 function canScrollX(el: Element | null, dx: number): boolean {
   let node: Element | null = el

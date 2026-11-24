@@ -20,7 +20,7 @@ function PeekCard({ tabId, origin }: { tabId: string; origin: { x: number; y: nu
     <>
       <motion.div
         className="fixed inset-0 z-[55]"
-        style={{ background: 'var(--scrim)', backdropFilter: 'blur(4px)' }}
+        style={{ background: 'var(--scrim)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0, transition: { duration: 0.35 } }}

@@ -1,4 +1,5 @@
 import { nativeImage, net } from 'electron'
+import { appTunneled } from './tunnel'
 
 const cache = new Map<string, string | null>()
 
@@ -15,8 +16,8 @@ export async function faviconColor(url: string): Promise<string | null> {
   if (cache.has(url)) return cache.get(url) ?? null
   try {
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 2500)
-    const res = await net.fetch(url, { signal: controller.signal })
+    const timer = setTimeout(() => controller.abort(), appTunneled() ? 10000 : 2500)
+    const res = await net.fetch(url, { signal: controller.signal, credentials: 'omit' })
     clearTimeout(timer)
     if (!res.ok) throw new Error(String(res.status))
     const buf = Buffer.from(await res.arrayBuffer())

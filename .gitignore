@@ -9,3 +9,13 @@ playwright-report/
 .env
 .env.*
 build/icon.iconset/
+resources/tor/
+
+# Local-only: editor, agent and key files
+.claude/settings.local.json
+.vscode/
+.idea/
+*.pem
+*.key
+*.p12
+*.provisionprofile

@@ -30,7 +30,9 @@
   initial-value: #b4694a;
 }
 
-:root {
+/* `.theme-dark` lets a subtree (the space scenes) stay dark inside the light theme. */
+:root,
+.theme-dark {
   --text: #e8e4dc;
   --text-dim: rgb(232 228 220 / 0.62);
   --text-faint: rgb(232 228 220 / 0.36);
@@ -128,14 +130,17 @@ button {
   -webkit-app-region: no-drag;
 }
 
+/*
+ * Panels are almost opaque, so they don't use backdrop-filter: blurring what's
+ * behind a 92–97% opaque surface is invisible but costs a full-screen blur
+ * every frame, which is what made overlays stutter on open.
+ */
 .glass {
   background: var(--glass);
-  backdrop-filter: blur(20px) saturate(1.1);
   border: 1px solid var(--hairline);
 }
 .glass-strong {
   background: var(--glass-strong);
-  backdrop-filter: blur(24px) saturate(1.1);
   border: 1px solid var(--hairline);
   box-shadow: var(--shadow);
 }

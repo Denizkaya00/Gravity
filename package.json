@@ -32,9 +32,11 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "test": "vitest run",
     "test:e2e": "npm run build && playwright test",
-    "dist": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac",
-    "dist:dir": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --arm64",
-    "icon": "electron scripts/make-icon.cjs"
+    "tor": "node scripts/fetch-tor.mjs",
+    "dist": "npm run tor && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac",
+    "dist:dir": "node scripts/fetch-tor.mjs arm64 && npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac dir --arm64",
+    "icon": "electron scripts/make-icon.cjs && node scripts/brand-electron.cjs",
+    "postinstall": "node scripts/brand-electron.cjs"
   },
   "dependencies": {
     "@ghostery/adblocker-electron": "^2.20.3"

@@ -103,7 +103,7 @@ export function buildMenu(getWin: () => BrowserWindow | null): void {
     },
     {
       label: 'History',
-      submenu: [item('Back', 'Cmd+[', 'back'), item('Forward', 'Cmd+]', 'forward')]
+      submenu: [item('Back', 'Cmd+[', 'back'), item('Forward', 'Cmd+]', 'forward'), item('Home', 'Cmd+Shift+H', 'go-home')]
     },
     {
       label: 'Tabs',
@@ -119,6 +119,7 @@ export function buildMenu(getWin: () => BrowserWindow | null): void {
         item('Last Tab', 'Cmd+9', 'select-tab', -1),
         { type: 'separator' },
         item('Pin / Unpin Tab', 'Cmd+D', 'pin-tab'),
+        item('Add / Remove Favorite', 'Cmd+Shift+D', 'favorite'),
         { type: 'separator' },
         ...Array.from({ length: 9 }, (_, i) => item(`Space ${i + 1}`, `Ctrl+${i + 1}`, 'select-space', i)),
         item('Next Space', 'Ctrl+Cmd+Right', 'next-space'),

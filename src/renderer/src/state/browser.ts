@@ -32,6 +32,8 @@ interface BrowserState {
   newTab: (url: string, opts?: { spaceId?: string; background?: boolean; afterId?: string; peek?: boolean }) => string
   closeTab: (id: string) => void
   activateTab: (id: string) => void
+  /** Shows Home in the active space; its tabs stay open in the sidebar. */
+  goHome: () => void
   updateTab: (id: string, patch: Partial<BrowserTab>) => void
   reorder: (spaceId: string, ids: string[]) => void
   togglePin: (id: string) => void
@@ -168,6 +170,12 @@ export const useBrowser = create<BrowserState>((set, get) => ({
       spaceDirection: idxNext >= idxPrev ? 1 : -1,
       activeTabBySpace: { ...state.activeTabBySpace, [tab.spaceId]: id }
     })
+  },
+
+  goHome: () => {
+    const state = get()
+    if (!state.activeTabBySpace[state.activeSpaceId]) return
+    set({ activeTabBySpace: { ...state.activeTabBySpace, [state.activeSpaceId]: null } })
   },
 
   updateTab: (id, patch) => {

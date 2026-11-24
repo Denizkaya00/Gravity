@@ -1,19 +1,20 @@
 import { useRef } from 'react'
 import { AnimatePresence, LayoutGroup, motion, Reorder } from 'motion/react'
 import { ArrowDownToLine, PanelLeft, Plus } from 'lucide-react'
-import { selectActiveSpace, selectActiveTabId, useBrowser } from '@/state/browser'
+import { selectActiveTabId, useBrowser } from '@/state/browser'
 import { useUI } from '@/state/ui'
 import { clearSpace } from '@/browser/actions'
 import { spring } from '@/lib/springs'
 import { cn } from '@/lib/utils'
 import { TabItem } from './TabItem'
 import { AddressPill } from './AddressPill'
-import { NavButtons } from './NavButtons'
+import { HomeButton, NavButtons } from './NavButtons'
 import { Favorites } from './Favorites'
 import { SpaceSwitcher } from './SpaceSwitcher'
 import { SidebarFooter } from './SidebarFooter'
 import { IconButton } from '@/components/ui/IconButton'
 import { useSettings } from '@/state/settings'
+import { useBlackHoleBackdrop } from '@/lib/theme'
 
 function TabList() {
   const spaceId = useBrowser((s) => s.activeSpaceId)
@@ -99,58 +100,13 @@ function TabList() {
   )
 }
 
-function SpaceTitle() {
-  const space = useBrowser(selectActiveSpace)
-  const index = useBrowser((s) => s.spaces.findIndex((sp) => sp.id === s.activeSpaceId))
-  const updateSpace = useBrowser((s) => s.updateSpace)
-  const direction = useBrowser((s) => s.spaceDirection)
-  if (!space) return null
-  return (
-    <div className="relative mt-4 mb-1.5 h-5 overflow-hidden px-2.5">
-      <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-        <motion.div
-          key={space.id}
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -10, opacity: 0 }}
-          transition={spring.snappy}
-          className="label flex items-center gap-2"
-        >
-          <span className="h-1.5 w-1.5 rounded-[1px]" style={{ background: space.theme.colors[0] }} />
-          <span className="tabular-nums">{String(index + 1).padStart(2, '0')}</span>
-          <span className="text-faint/60">/</span>
-          <span
-            className="text-dim outline-none"
-            contentEditable
-            suppressContentEditableWarning
-            spellCheck={false}
-            title="Click to rename"
-            onBlur={(e) => {
-              const name = e.currentTarget.textContent?.trim()
-              if (name && name !== space.name) updateSpace(space.id, { name })
-              else e.currentTarget.textContent = space.name
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                e.currentTarget.blur()
-              }
-            }}
-          >
-            {space.name}
-          </span>
-          {space.private && <span className="ml-auto text-faint">private</span>}
-        </motion.div>
-      </AnimatePresence>
-    </div>
-  )
-}
-
 /** The contents shared by the docked sidebar and the hover-to-reveal floating one. */
 export function SidebarContent({ floating = false }: { floating?: boolean }) {
   const cycleSpace = useBrowser((s) => s.cycleSpace)
   const collapsed = useSettings((s) => s.sidebarCollapsed)
   const update = useSettings((s) => s.update)
+  const focus = useUI((s) => s.focusMode)
+  const windowFullscreen = useUI((s) => s.windowFullscreen)
   const wheel = useRef({ acc: 0, t: 0 })
 
   return (
@@ -170,21 +126,42 @@ export function SidebarContent({ floating = false }: { floating?: boolean }) {
       }}
     >
       {!floating && (
-        <div className="drag absolute inset-x-0 top-0 flex h-[46px] items-center justify-end gap-0.5 pr-2.5">
-          <IconButton label={collapsed ? 'Show sidebar (⌘S)' : 'Hide sidebar (⌘S)'} onClick={() => void update({ sidebarCollapsed: !collapsed })}>
+        // Sidebar toggle and Home sit at the left edge, just after the traffic lights
+        // (which macOS hides in full screen, so the buttons take their place there).
+        <div
+          className={cn(
+            'drag absolute inset-x-0 top-0 flex h-[46px] items-center justify-between pr-2.5',
+            windowFullscreen ? 'pl-2.5' : 'pl-[78px]'
+          )}
+        >
+          <div className="no-drag flex items-center gap-0.5">
+            <IconButton label={collapsed ? 'Show sidebar (⌘S)' : 'Hide sidebar (⌘S)'} onClick={() => void update({ sidebarCollapsed: !collapsed })}>
+              <PanelLeft size={15} />
+            </IconButton>
+            <HomeButton />
+          </div>
+          <NavButtons home={false} />
+        </div>
+      )}
+      {floating && (
+        // Leaves room for the traffic lights, then offers a way to dock the sidebar again.
+        <div className="mb-2 flex h-[30px] items-center justify-end gap-0.5 pl-[72px]">
+          <IconButton
+            label={focus ? 'Exit focus mode (⇧⌘F)' : 'Keep sidebar open (⌘S)'}
+            onClick={() => {
+              if (focus) useUI.getState().set({ focusMode: false, sidebarHover: false })
+              else void update({ sidebarCollapsed: false })
+            }}
+            data-testid="sidebar-dock"
+          >
             <PanelLeft size={15} />
           </IconButton>
           <NavButtons />
         </div>
       )}
-      {floating && (
-        <div className="mb-2 flex items-center justify-end gap-0.5">
-          <NavButtons />
-        </div>
-      )}
       <AddressPill />
       <Favorites />
-      <SpaceTitle />
+      <div className="h-3" />
       <TabList />
       <SpaceSwitcher />
       <SidebarFooter />
@@ -195,13 +172,18 @@ export function SidebarContent({ floating = false }: { floating?: boolean }) {
 export function Sidebar() {
   const collapsed = useSettings((s) => s.sidebarCollapsed)
   const focus = useUI((s) => s.focusMode)
+  const glass = useBlackHoleBackdrop()
   const hidden = collapsed || focus
   return (
     <motion.aside
       initial={false}
       animate={{ width: hidden ? 0 : 268, opacity: hidden ? 0 : 1 }}
       transition={spring.gentle}
-      className="relative h-full shrink-0 overflow-hidden"
+      // Over the black hole the sidebar is smoked glass, so the light shows through.
+      className={cn(
+        'relative h-full shrink-0 overflow-hidden',
+        glass && 'border-r border-white/[0.06] bg-[rgb(10_9_8/0.55)] backdrop-blur-xl backdrop-brightness-[0.62]'
+      )}
     >
       <div className="relative h-full w-[268px]">
         {/* Only one sidebar may own the shared layoutIds at a time. */}

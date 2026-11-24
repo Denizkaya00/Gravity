@@ -21,7 +21,6 @@ A running list. Nothing here is promised. Items are grouped by how well they fit
 - **Sync** through an iCloud Drive folder, without a server.
 - **Native Liquid Glass** through `NSGlassEffectView` once there is a public API. The current wrappers use a private API.
 - **Screenshot and annotate** a region of the page.
-- **Pinch to zoom out** into the Overview.
 
 ## Not planned
 

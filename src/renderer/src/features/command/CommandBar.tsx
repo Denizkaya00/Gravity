@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { AppWindow, Archive, ArrowRight, Calculator, Clock, Globe, Search, Star } from 'lucide-react'
-import type { ArchivedTab, HistoryEntry, OpenMode } from '@shared/types'
+import type { ArchivedTab, Favorite, HistoryEntry, OpenMode, SearchEngineId } from '@shared/types'
+import { favoriteKey, findFavorite, MAX_FAVORITES } from '@shared/favorites'
 import { calculate, formatNumber } from '@shared/calc'
 import { rankItems, fuzzyScore } from '@shared/rank'
 import { parseInput, prettyUrl, SEARCH_ENGINES, searchUrl } from '@shared/url'
@@ -9,6 +10,7 @@ import { selectActiveSpace, selectActiveTab, useBrowser } from '@/state/browser'
 import { useSettings } from '@/state/settings'
 import { useUI } from '@/state/ui'
 import { openUrl, submitInput } from '@/browser/actions'
+import { addToFavorites } from '@/browser/favorites'
 import { page } from '@/browser/registry'
 import { Favicon } from '@/components/ui/Favicon'
 import { Kbd } from '@/components/ui/Kbd'
@@ -85,7 +87,7 @@ function Panel() {
     let live = true
     const text = dq.trim()
     const looksUrl = parseInput(text, engine).kind === 'url'
-    if (!text || looksUrl || !suggestOn || space?.private) {
+    if (!text || looksUrl || !suggestOn || space?.private || mode === 'pin') {
       setSuggestions([])
       return
     }
@@ -93,7 +95,7 @@ function Panel() {
     return () => {
       live = false
     }
-  }, [dq, engine, suggestOn, space?.private])
+  }, [dq, engine, suggestOn, space?.private, mode])
 
   const items = useMemo<Item[]>(() => {
     const out: Item[] = []
@@ -106,6 +108,8 @@ function Panel() {
       if (m === 'replace') submitInput(url, 'replace')
       else openUrl(url, m)
     }
+
+    if (mode === 'pin') return pinItems(text, history, favorites, engine)
 
     const calc = calculate(text)
     if (calc !== null) {
@@ -230,12 +234,14 @@ function Panel() {
     >
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.14, delay: 0.04 }}>
         <div className="flex items-center gap-3 px-4 py-3.5">
-          <Search size={16} className="shrink-0 text-faint" />
+          {mode === 'pin' ? <Star size={16} className="shrink-0 text-faint" /> : <Search size={16} className="shrink-0 text-faint" />}
           <input
             ref={inputRef}
             value={query}
             spellCheck={false}
-            placeholder={mode === 'split' ? 'Open beside this page…' : 'Search, enter a URL, or type a command'}
+            placeholder={
+              mode === 'split' ? 'Open beside this page…' : mode === 'pin' ? 'Add a favorite: type an address, or find a tab or a page you visited' : 'Search, enter a URL, or type a command'
+            }
             onChange={(e) => {
               setTouched(true)
               setQuery(e.target.value)
@@ -249,7 +255,7 @@ function Panel() {
                 setIndex((i) => Math.max(0, i - 1))
               } else if (e.key === 'Enter') {
                 e.preventDefault()
-                run(index, e.metaKey ? 'cmd' : e.shiftKey ? 'shift' : e.altKey ? 'alt' : 'enter')
+                run(index, mode === 'pin' ? 'enter' : e.metaKey ? 'cmd' : e.shiftKey ? 'shift' : e.altKey ? 'alt' : 'enter')
               } else if (e.key === 'Escape') {
                 e.preventDefault()
                 close()
@@ -269,7 +275,11 @@ function Panel() {
         </div>
         <div className="h-px bg-hairline" />
         <div ref={listRef} className="scroll-thin max-h-[min(420px,56vh)] overflow-y-auto p-1.5">
-          {items.length === 0 && <div className="px-3 py-6 text-center text-[13px] text-faint">Type to search the web, your tabs and history</div>}
+          {items.length === 0 && (
+            <div className="px-3 py-6 text-center text-[13px] text-faint">
+              {mode === 'pin' ? 'Type an address, or part of a page’s name' : 'Type to search the web, your tabs and history'}
+            </div>
+          )}
           {items.map((item, i) => {
             const header = item.group !== lastGroup ? item.group : null
             lastGroup = item.group
@@ -283,7 +293,7 @@ function Panel() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.14, delay: touched ? 0 : Math.min(i * 0.015, 0.12) }}
                   onMouseMove={() => index !== i && setIndex(i)}
-                  onClick={(e) => run(i, e.metaKey ? 'cmd' : e.shiftKey ? 'shift' : e.altKey ? 'alt' : 'enter')}
+                  onClick={(e) => run(i, mode === 'pin' ? 'enter' : e.metaKey ? 'cmd' : e.shiftKey ? 'shift' : e.altKey ? 'alt' : 'enter')}
                   className="relative flex h-9 items-center gap-3 rounded-[7px] px-2.5"
                   data-testid="command-item"
                 >
@@ -314,6 +324,16 @@ function Panel() {
             )
           })}
         </div>
+        {mode === 'pin' ? (
+          <div className="flex items-center gap-4 border-t border-hairline px-4 py-2 font-mono text-[10.5px] text-faint">
+            <span className="flex items-center gap-1.5">
+              <Kbd>↩</Kbd> add to favorites
+            </span>
+            <span className="ml-auto tracking-wider uppercase tabular-nums">
+              {String(favorites.length).padStart(2, '0')} / {MAX_FAVORITES}
+            </span>
+          </div>
+        ) : (
         <div className="flex items-center gap-4 border-t border-hairline px-4 py-2 font-mono text-[10.5px] text-faint">
           <span className="flex items-center gap-1.5">
             <Kbd>↩</Kbd> open
@@ -329,13 +349,74 @@ function Panel() {
           </span>
           <span className="ml-auto truncate uppercase tracking-wider">{space?.name ?? ''}</span>
         </div>
+        )}
       </motion.div>
     </motion.div>
   )
 }
 
+/**
+ * Choosing a page for Favorites: an address typed in, a tab that's open (this
+ * space's first) or a page from history. Nothing here opens anything.
+ */
+function pinItems(text: string, history: HistoryEntry[], favorites: Favorite[], engine: SearchEngineId): Item[] {
+  const out: Item[] = []
+  const B = useBrowser.getState()
+  const kept = (url: string) => !!findFavorite(favorites, url)
+  const pin = (p: { url: string; title?: string; favicon?: string }) => () => void addToFavorites(p)
+  const seen = new Set<string>()
+
+  const parsed = text ? parseInput(text, engine) : null
+  if (parsed?.kind === 'url') {
+    seen.add(favoriteKey(parsed.url))
+    out.push({
+      id: 'go',
+      group: 'Address',
+      title: prettyUrl(parsed.url),
+      subtitle: kept(parsed.url) ? 'Already a favorite' : undefined,
+      icon: <Globe size={16} />,
+      run: pin({ url: parsed.url })
+    })
+  }
+
+  const web = Object.values(B.tabs).filter((t) => !t.peek && /^https?:/.test(t.url) && !kept(t.url))
+  const tabs = text
+    ? rankItems(text, web, (t) => (t.spaceId === B.activeSpaceId ? 8 : 0), 4)
+    : web
+        .filter((t) => t.spaceId === B.activeSpaceId)
+        .sort((a, b) => b.lastActiveAt - a.lastActiveAt)
+        .slice(0, 5)
+  for (const t of tabs) {
+    if (seen.has(favoriteKey(t.url))) continue
+    seen.add(favoriteKey(t.url))
+    out.push({
+      id: `tab-${t.id}`,
+      group: 'Open Tabs',
+      title: t.title || t.url,
+      subtitle: prettyUrl(t.url),
+      icon: <Favicon src={t.favicon} url={t.url} size={16} />,
+      run: pin(t)
+    })
+  }
+
+  for (const h of history) {
+    if (out.length >= 12 || seen.has(favoriteKey(h.url)) || kept(h.url) || !/^https?:/.test(h.url)) continue
+    seen.add(favoriteKey(h.url))
+    out.push({
+      id: `h-${h.url}`,
+      group: text ? 'History' : 'Recently Visited',
+      title: h.title || h.url,
+      subtitle: prettyUrl(h.url),
+      icon: h.favicon ? <Favicon src={h.favicon} url={h.url} size={16} /> : <Clock size={15} />,
+      run: pin(h)
+    })
+  }
+  return out
+}
+
 export function CommandBar() {
   const open = useUI((s) => s.command.open)
+  const mode = useUI((s) => s.command.mode)
   const close = useUI((s) => s.closeCommand)
   return (
     <AnimatePresence>
@@ -343,13 +424,14 @@ export function CommandBar() {
         <motion.div key="command" className="fixed inset-0 z-[70] flex justify-center pt-[14vh]" initial="hidden" animate="visible" exit="hidden">
           <motion.div
             className="absolute inset-0"
-            style={{ background: 'var(--scrim)', backdropFilter: 'blur(3px)' }}
+            style={{ background: 'var(--scrim)' }}
             variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
             transition={{ duration: 0.16 }}
             onMouseDown={close}
           />
           <div className="pointer-events-none relative">
-            <Panel />
+            {/* A new mode (a command can switch to `pin`) starts with a clean field. */}
+            <Panel key={mode} />
           </div>
         </motion.div>
       )}

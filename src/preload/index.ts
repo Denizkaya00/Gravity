@@ -1,16 +1,26 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { IPC } from '../shared/ipc'
 import type {
+  OfferResponse,
+  PasswordDraft,
+  PasswordEntry,
+  PasswordOffer,
+  PasswordSummary,
+  VaultStatus
+} from '../shared/passwords'
+import type {
   ArchivedTab,
   CommandEvent,
   DownloadInfo,
   Favorite,
+  FavoritesBySpace,
   HistoryEntry,
   OpenUrlRequest,
   PermissionRequest,
   SearchEngineId,
   SessionData,
-  Settings
+  Settings,
+  TunnelStatus
 } from '../shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): () => void {
@@ -19,8 +29,12 @@ function on<T>(channel: string, cb: (payload: T) => void): () => void {
   return () => ipcRenderer.removeListener(channel, listener)
 }
 
+const LOCALE_ARG = '--gravity-locale='
+
 const api = {
   platform: process.platform,
+  /** The Mac's region format, such as `en-TR`. The interface itself is always English. */
+  systemLocale: process.argv.find((a) => a.startsWith(LOCALE_ARG))?.slice(LOCALE_ARG.length) || 'en-US',
   session: {
     load: (): Promise<SessionData | null> => ipcRenderer.invoke(IPC.sessionLoad),
     save: (data: SessionData): void => ipcRenderer.send(IPC.sessionSave, data)
@@ -34,8 +48,9 @@ const api = {
     clear: (): Promise<void> => ipcRenderer.invoke(IPC.historyClear)
   },
   favorites: {
-    get: (): Promise<Favorite[]> => ipcRenderer.invoke(IPC.favoritesGet),
-    set: (list: Favorite[]): void => ipcRenderer.send(IPC.favoritesSet, list)
+    /** Per space; an array is the list from before spaces had their own. */
+    get: (): Promise<FavoritesBySpace | Favorite[]> => ipcRenderer.invoke(IPC.favoritesGet),
+    set: (bySpace: FavoritesBySpace): void => ipcRenderer.send(IPC.favoritesSet, bySpace)
   },
   archive: {
     get: (): Promise<ArchivedTab[]> => ipcRenderer.invoke(IPC.archiveGet),
@@ -59,6 +74,27 @@ const api = {
   shield: {
     onBlocked: (cb: (e: { webContentsId: number; count: number }) => void) => on(IPC.shieldBlocked, cb)
   },
+  passwords: {
+    status: (): Promise<VaultStatus> => ipcRenderer.invoke(IPC.passwordsStatus),
+    /** Asks for Touch ID where the Mac has it. */
+    unlock: (): Promise<boolean> => ipcRenderer.invoke(IPC.passwordsUnlock),
+    lock: (): void => ipcRenderer.send(IPC.passwordsLock),
+    list: (): Promise<PasswordSummary[]> => ipcRenderer.invoke(IPC.passwordsList),
+    get: (id: string): Promise<PasswordEntry | null> => ipcRenderer.invoke(IPC.passwordsGet, id),
+    save: (draft: PasswordDraft): Promise<PasswordSummary> => ipcRenderer.invoke(IPC.passwordsSave, draft),
+    remove: (id: string): Promise<void> => ipcRenderer.invoke(IPC.passwordsRemove, id),
+    copy: (id: string, field: 'username' | 'password'): Promise<boolean> => ipcRenderer.invoke(IPC.passwordsCopy, id, field),
+    never: (): Promise<string[]> => ipcRenderer.invoke(IPC.passwordsNever),
+    neverRemove: (site: string): Promise<void> => ipcRenderer.invoke(IPC.passwordsNeverRemove, site),
+    onOffer: (cb: (o: PasswordOffer) => void) => on(IPC.passwordsOffer, cb),
+    respondOffer: (id: string, answer: OfferResponse): void => ipcRenderer.send(IPC.passwordsOfferRespond, id, answer)
+  },
+  tunnel: {
+    get: (): Promise<TunnelStatus> => ipcRenderer.invoke(IPC.tunnelGet),
+    onStatus: (cb: (s: TunnelStatus) => void) => on(IPC.tunnelStatus, cb),
+    /** New Tor circuits (a different exit) for the next connections. False if tor isn't connected. */
+    newCircuit: (): Promise<boolean> => ipcRenderer.invoke(IPC.tunnelNewCircuit)
+  },
   onCommand: (cb: (e: CommandEvent) => void) => on(IPC.command, cb),
   onOpenUrl: (cb: (r: OpenUrlRequest) => void) => on(IPC.openUrl, cb),
   onMetaKey: (cb: (e: { down: boolean; combo?: boolean }) => void) => on(IPC.metaKey, cb),
@@ -68,6 +104,8 @@ const api = {
     set: (): Promise<boolean> => ipcRenderer.invoke(IPC.defaultBrowserSet)
   },
   setTrafficLights: (visible: boolean): void => ipcRenderer.send(IPC.trafficLights, visible),
+  /** Whether a tab's page is in view; video in a tab that's away pauses until it's back. */
+  setTabInView: (webContentsId: number, inView: boolean): void => ipcRenderer.send(IPC.tabInView, webContentsId, inView),
   copy: (text: string): void => ipcRenderer.send(IPC.clipboardWrite, text),
   appInfo: (): Promise<{ version: string; name: string }> => ipcRenderer.invoke(IPC.appInfo)
 }

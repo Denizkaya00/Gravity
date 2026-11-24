@@ -16,6 +16,18 @@ h1{font-size:44px;margin:0 0 12px} a{color:${color}}</style></head><body><h1>${t
   const server = createServer((req, res) => {
     res.setHeader('content-type', 'text/html')
     if (req.url?.startsWith('/two')) return res.end(page('Second Orbit', '#0ea5e9', '<p>Another world. Gravity is here too.</p>'))
+    if (req.url?.startsWith('/login'))
+      return res.end(
+        page(
+          'Sign In',
+          '#16a34a',
+          `<form method="post" action="/welcome"><p><input id="user" name="username" autocomplete="username" placeholder="Email"></p>
+<p><input id="pass" type="password" name="password" autocomplete="current-password"></p><p><button id="go">Sign in</button></p></form>`
+        )
+      )
+    if (req.url?.startsWith('/welcome')) return res.end(page('Welcome Back', '#16a34a', '<p>You are signed in.</p>'))
+    if (req.url?.startsWith('/form'))
+      return res.end(page('Text Form', '#db2777', '<p><input id="field" placeholder="Type here"></p><p><textarea id="area"></textarea></p>'))
     if (req.url?.startsWith('/three')) return res.end(page('Third Moon', '#f97316', '<p>Some findable words: nebula nebula nebula.</p>'))
     res.end(
       page(
@@ -32,10 +44,15 @@ h1{font-size:44px;margin:0 0 12px} a{color:${color}}</style></head><body><h1>${t
   }))
 }
 
-export async function launch(opts: { userData?: string; onboarded?: boolean } = {}): Promise<{ app: ElectronApplication; win: Page; userData: string }> {
+export async function launch(
+  opts: { userData?: string; onboarded?: boolean; settings?: Record<string, unknown> } = {}
+): Promise<{ app: ElectronApplication; win: Page; userData: string }> {
   const userData = opts.userData ?? mkdtempSync(join(tmpdir(), 'gravity-e2e-'))
-  if (opts.onboarded !== false) {
-    writeFileSync(join(userData, 'settings.json'), JSON.stringify({ onboarded: true, shield: false, suggestions: false }))
+  if (opts.onboarded !== false && !opts.userData) {
+    writeFileSync(
+      join(userData, 'settings.json'),
+      JSON.stringify({ onboarded: true, shield: false, suggestions: false, ...opts.settings })
+    )
   }
   const app = await electron.launch({
     args: ['out/main/index.js'],

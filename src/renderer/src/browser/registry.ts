@@ -1,4 +1,5 @@
 import type { WebviewTag } from 'electron'
+import { stepZoom } from '@shared/zoom'
 import { useRuntime } from '@/state/runtime'
 
 /**
@@ -51,14 +52,21 @@ export const page = {
     safe(() => registry.get(id)?.setAudioMuted(muted))
     useRuntime.getState().patch(id, { muted })
   },
+  /** ⌘+ / ⌘− / ⌘0. Returns the new level. */
   zoom(id: string, dir: 1 | -1 | 0) {
     const wv = registry.get(id)
     if (!wv) return 0
-    const current = safe(() => wv.getZoomLevel()) ?? 0
-    const next = dir === 0 ? 0 : Math.max(-4, Math.min(5, current + dir * 0.5))
-    safe(() => wv.setZoomLevel(next))
-    useRuntime.getState().patch(id, { zoom: next })
+    const next = stepZoom(safe(() => wv.getZoomLevel()) ?? 0, dir)
+    page.setZoom(id, next)
     return next
+  },
+  zoomLevel: (id: string): number => safe(() => registry.get(id)?.getZoomLevel()) ?? useRuntime.getState().get(id).zoom,
+  /** Sets the zoom level directly, for trackpad pinch. */
+  setZoom(id: string, level: number) {
+    const wv = registry.get(id)
+    if (!wv) return
+    safe(() => wv.setZoomLevel(level))
+    useRuntime.getState().patch(id, { zoom: level })
   },
   find(id: string, text: string, opts: { forward?: boolean; findNext?: boolean } = {}) {
     const wv = registry.get(id)

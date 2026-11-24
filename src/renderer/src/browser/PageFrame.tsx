@@ -3,10 +3,12 @@ import { AnimatePresence, animate, motion } from 'motion/react'
 import { X } from 'lucide-react'
 import { selectActiveTabId, selectSplit, useBrowser } from '@/state/browser'
 import { useSettings } from '@/state/settings'
+import { useBlackHoleBackdrop } from '@/lib/theme'
 import { useUI } from '@/state/ui'
 import { spring } from '@/lib/springs'
 import { cn } from '@/lib/utils'
 import { HomeCanvas } from '@/features/newtab/HomeCanvas'
+import { CompactBar } from '@/chrome/CompactBar'
 import { Slot, kickLayout } from './Slot'
 
 function SplitDivider({ containerRef }: { containerRef: React.RefObject<HTMLDivElement | null> }) {
@@ -138,13 +140,14 @@ export function PageFrame() {
   const split = useBrowser(selectSplit)
   const collapsed = useSettings((s) => s.sidebarCollapsed)
   const focus = useUI((s) => s.focusMode)
+  const backdrop = useBlackHoleBackdrop()
 
   return (
     <motion.main
       className="drag relative h-full min-w-0 flex-1"
       initial={false}
       animate={{
-        paddingTop: focus ? 26 : 8,
+        paddingTop: focus ? 26 : collapsed ? 40 : 8,
         paddingBottom: focus ? 26 : 8,
         paddingRight: focus ? 26 : 8,
         paddingLeft: focus ? 26 : collapsed ? 8 : 0
@@ -152,9 +155,15 @@ export function PageFrame() {
       transition={spring.gentle}
       onUpdate={kickLayout}
     >
+      <AnimatePresence>{collapsed && !focus && <CompactBar key="compact" />}</AnimatePresence>
       <motion.div
         className="no-drag relative h-full w-full overflow-hidden rounded-[10px]"
-        style={{ background: 'var(--frame-bg)', boxShadow: '0 0 0 1px var(--hairline), var(--shadow)' }}
+        // On Home with the black hole behind everything, the frame steps aside.
+        style={
+          !activeId && backdrop
+            ? { background: 'transparent' }
+            : { background: 'var(--frame-bg)', boxShadow: '0 0 0 1px var(--hairline), var(--shadow)' }
+        }
         data-testid="page-frame"
       >
         {activeId ? split ? <SplitView /> : <Slot name="main" className="absolute inset-0" /> : <HomeCanvas />}

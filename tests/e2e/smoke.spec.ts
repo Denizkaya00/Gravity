@@ -116,16 +116,60 @@ test('browse, overview, peek, split, find, focus, settings and restore', async (
   await second.app.close()
 })
 
+test('Home keeps tabs open, and the same key or button goes back to the page', async () => {
+  const { app, win } = await launch()
+  // Pages load when first shown, so let the first one load before moving on.
+  await openUrl(app, `${site.url}/`, 'foreground')
+  await expect(tabs(win).filter({ hasText: 'Gravity Test Home' }).first()).toBeVisible({ timeout: 15_000 })
+  await openUrl(app, `${site.url}/two`, 'foreground')
+  await expect(tabs(win)).toHaveCount(2)
+  await expect(tabs(win).filter({ hasText: 'Second Orbit' }).first()).toBeVisible({ timeout: 15_000 })
+  const selected = win.locator('[data-tab-id] [aria-selected="true"]')
+
+  // ⇧⌘H lives in the History menu, like Safari.
+  const accel = await app.evaluate(
+    ({ Menu }) =>
+      Menu.getApplicationMenu()
+        ?.items.find((i) => i.label === 'History')
+        ?.submenu?.items.find((i) => i.label === 'Home')?.accelerator
+  )
+  expect(accel).toBe('Cmd+Shift+H')
+
+  await command(app, { command: 'go-home' })
+  await expect(win.getByTestId('home-canvas')).toBeVisible()
+  // Nothing was closed: both tabs stay in the sidebar and their pages stay alive.
+  await expect(tabs(win)).toHaveCount(2)
+  await expect(selected).toHaveCount(0)
+  await expect(win.locator('[data-tab-surface]')).toHaveCount(2)
+  await shot(win, '13-home-with-tabs')
+
+  // Pressed again, it returns to the page you came from.
+  await command(app, { command: 'go-home' })
+  await expect(win.getByTestId('home-canvas')).toHaveCount(0)
+  await expect(selected).toHaveText(/Second Orbit/)
+
+  // The button next to Back / Forward does the same.
+  await win.getByTestId('home-button').click()
+  await expect(win.getByTestId('home-canvas')).toBeVisible()
+  await tabs(win).filter({ hasText: 'Gravity Test Home' }).first().click()
+  await expect(win.getByTestId('home-canvas')).toHaveCount(0)
+  await expect(selected).toHaveText(/Gravity Test Home/)
+  await app.close()
+})
+
 test('onboarding walks through three screens', async () => {
   const { app, win } = await launch({ onboarded: false })
   await expect(win.getByTestId('onboarding')).toBeVisible()
   await win.waitForTimeout(2600)
   await shot(win, '20-onboarding')
-  await win.getByTestId('onboarding-next').click()
-  await win.waitForTimeout(900)
+  // Each step's button has its own id, so a retried click can't land on the next step's button.
+  await win.getByTestId('onboarding-step-1').click()
+  await expect(win.getByText('Appearance')).toBeVisible()
+  await win.waitForTimeout(600)
   await shot(win, '21-onboarding-accent')
-  await win.getByTestId('onboarding-next').click()
-  await win.waitForTimeout(1200)
+  await win.getByTestId('onboarding-step-2').click()
+  await expect(win.getByText('Five things to know')).toBeVisible()
+  await win.waitForTimeout(900)
   await shot(win, '22-onboarding-tricks')
   await win.getByTestId('onboarding-done').click()
   await expect(win.getByTestId('onboarding')).toHaveCount(0, { timeout: 5_000 })

@@ -7,6 +7,7 @@ import { useSlots, useUI } from '@/state/ui'
 import { page, registry } from './registry'
 import { openUrl } from './actions'
 import { swipe } from '@/features/swipe/swipeStore'
+import { pinch } from '@/features/pinch/pinchStore'
 
 type AnyEvent = Event & Record<string, unknown>
 
@@ -130,10 +131,19 @@ export function TabView({ id }: { id: string }) {
       }
     }
 
+    // A trackpad pinch never reaches the page: Chromium hands it to the outermost frame, this UI,
+    // as wheel events with ctrlKey aimed at the <webview>. (Plain scrolls and ⌃-scroll go to the page.)
+    const el: HTMLElement = wv
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) pinch.push(id, e.deltaY)
+    }
+
     for (const [name, fn] of Object.entries(handlers)) wv.addEventListener(name, fn as EventListener)
+    el.addEventListener('wheel', onWheel, { passive: true })
     return () => {
       if (thumbTimer) clearTimeout(thumbTimer)
       for (const [name, fn] of Object.entries(handlers)) wv.removeEventListener(name, fn as EventListener)
+      el.removeEventListener('wheel', onWheel)
       registry.delete(id)
     }
   }, [id])

@@ -18,6 +18,8 @@ export interface TabRuntime {
   find?: { active: number; matches: number }
   /** Increments every time a load finishes; drives the "finished" shimmer. */
   loadedTick: number
+  /** When this tab last retried a failed page on a new Tor exit. */
+  tunnelRetryAt?: number
 }
 
 const blank = (): TabRuntime => ({

@@ -12,6 +12,8 @@ export interface Space {
   theme: SpaceTheme
   /** Private spaces use an in-memory partition and never write history. */
   private?: boolean
+  /** This space's own background. Without one, it shows the default from Settings. */
+  background?: SpaceBackground
 }
 
 export interface Tab {
@@ -77,6 +79,29 @@ export interface ArchivedTab {
 
 export type ThemeMode = 'dark' | 'light' | 'system'
 export type MotionPref = 'user' | 'always' | 'never'
+export type BlackHoleMode = 'live' | 'still' | 'off'
+
+/** The scene behind Home and the Overview. */
+export type SceneId = 'blackhole' | 'mountains' | 'wave' | 'dunes' | 'forest'
+
+/** Whether the painted scenes show day or night. Automatic follows the sun where you are. */
+export type DaylightMode = 'auto' | 'day' | 'night'
+
+/** The photographs the Mountains background can show. */
+export type MountainPhoto = 'valleys' | 'ama-dablam' | 'everest' | 'fitz-roy' | 'khumbu'
+
+/** Everything that makes up a background: the scene and, for Mountains, its photo and night sky. */
+export interface SpaceBackground {
+  scene: SceneId
+  mountainPhoto: MountainPhoto
+  mountainStars: boolean
+}
+
+/** Where a new background goes: ask each time, only the space you're in, or every space. */
+export type BackgroundScope = 'ask' | 'space' | 'all'
+
+/** Favorites, per space id. */
+export type FavoritesBySpace = Record<string, Favorite[]>
 
 export interface Settings {
   searchEngine: SearchEngineId
@@ -89,6 +114,28 @@ export interface Settings {
   onboarded: boolean
   sidebarCollapsed: boolean
   suggestions: boolean
+  /** How the background scene moves: Live, Still or Off (the key predates the other scenes). */
+  blackHole: BlackHoleMode
+  /** Which scene is behind Home and the Overview. Onboarding always uses the black hole. */
+  scene: SceneId
+  /** Day or night in the painted scenes (the black hole is always in space). */
+  daylight: DaylightMode
+  /** Which photo the Mountains background shows. At night it turns to moonlight… */
+  mountainPhoto: MountainPhoto
+  /** …or gives way to the Milky Way. */
+  mountainStars: boolean
+  /** Whether changing the background asks, changes only the current space, or changes every space. */
+  backgroundScope: BackgroundScope
+  /** Which pages go through Tor. Gravity's own requests do whenever this isn't 'off'. */
+  tunnel: TunnelMode
+  /** When the Tunnel connects through a Snowflake bridge instead of directly to Tor. */
+  tunnelBridge: TunnelBridge
+  /** Sites (host names) that load without the Tunnel in normal spaces, because they don't work over Tor. */
+  tunnelBypass: string[]
+  /** Fill saved passwords into sign-in forms on their sites. */
+  passwordsAutofill: boolean
+  /** Ask to save a password after signing in with one Gravity doesn't know. */
+  passwordsOffer: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -101,7 +148,36 @@ export const DEFAULT_SETTINGS: Settings = {
   motion: 'user',
   onboarded: false,
   sidebarCollapsed: false,
-  suggestions: true
+  suggestions: true,
+  blackHole: 'live',
+  scene: 'blackhole',
+  daylight: 'auto',
+  mountainPhoto: 'valleys',
+  mountainStars: false,
+  backgroundScope: 'ask',
+  tunnel: 'off',
+  tunnelBridge: 'auto',
+  tunnelBypass: [],
+  passwordsAutofill: true,
+  passwordsOffer: true
+}
+
+export type TunnelMode = 'off' | 'private' | 'all'
+
+/** auto: direct first, then bridges if Tor seems blocked. always: bridges only. never: direct only. */
+export type TunnelBridge = 'auto' | 'always' | 'never'
+
+/** How tor reaches the Tor network: directly, or through a Snowflake or meek bridge. */
+export type TunnelTransport = 'direct' | 'snowflake' | 'meek'
+
+export interface TunnelStatus {
+  state: 'off' | 'connecting' | 'on' | 'error'
+  /** Tor's bootstrap progress, 0 to 100. */
+  progress: number
+  /** What Tor is doing, or what went wrong. */
+  message?: string
+  /** How this connection reaches Tor. */
+  transport?: TunnelTransport
 }
 
 export type DownloadState = 'progressing' | 'completed' | 'cancelled' | 'interrupted'
@@ -163,9 +239,11 @@ export type MenuCommand =
   | 'toggle-sidebar'
   | 'focus-mode'
   | 'tab-overview'
+  | 'go-home'
   | 'toggle-split'
   | 'copy-url'
   | 'pin-tab'
+  | 'favorite'
   | 'settings'
   | 'devtools'
   | 'print'

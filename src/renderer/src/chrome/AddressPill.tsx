@@ -4,6 +4,8 @@ import { selectActiveTab, useBrowser } from '@/state/browser'
 import { useSettings } from '@/state/settings'
 import { useUI } from '@/state/ui'
 import { prettyUrl } from '@shared/url'
+import { findFavorite } from '@shared/favorites'
+import { toggleFavorite } from '@/browser/favorites'
 import { spring } from '@/lib/springs'
 import { cn } from '@/lib/utils'
 
@@ -12,15 +14,13 @@ export function AddressPill() {
   const command = useUI((s) => s.command)
   const openCommand = useUI((s) => s.openCommand)
   const favorites = useSettings((s) => s.favorites)
-  const addFavorite = useSettings((s) => s.addFavorite)
-  const removeFavorite = useSettings((s) => s.removeFavorite)
 
   // While the Command Bar is open the pill "becomes" it (shared layoutId).
   const morphing = command.open
   const url = tab?.url ?? ''
   const secure = url.startsWith('https:')
   const insecure = url.startsWith('http:')
-  const fav = favorites.find((f) => f.url === url)
+  const fav = findFavorite(favorites, url)
 
   return (
     <div className="h-8 shrink-0">
@@ -53,9 +53,10 @@ export function AddressPill() {
           {tab && /^https?:/.test(url) && (
             <motion.button
               type="button"
-              title={fav ? 'Remove from Favorites' : 'Add to Favorites'}
+              title={fav ? 'Remove from Favorites (⇧⌘D)' : 'Add to Favorites (⇧⌘D)'}
               whileTap={{ scale: 0.85 }}
-              onClick={() => (fav ? removeFavorite(fav.id) : addFavorite({ url, title: tab.title, favicon: tab.favicon }))}
+              onClick={() => toggleFavorite(tab)}
+              data-testid="favorite-toggle"
               className={cn(
                 'flex h-6 w-6 items-center justify-center rounded-md text-faint hover:bg-hover hover:text-text',
                 !fav && 'opacity-0 group-hover:opacity-100'

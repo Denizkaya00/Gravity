@@ -14,13 +14,15 @@ export const SHORTCUTS: { group: string; items: [string, string][] }[] = [
       ['⇧ ⌘ T', 'Reopen closed tab'],
       ['⌃ Tab', 'Next tab'],
       ['⌘ 1…9', 'Jump to tab'],
-      ['⌘ D', 'Pin tab']
+      ['⌘ D', 'Pin tab'],
+      ['⇧ ⌘ D', 'Add to Favorites']
     ]
   },
   {
     group: 'Gravity',
     items: [
       ['⇧ ⌘ \\', 'Gravity Well (all tabs)'],
+      ['⇧ ⌘ H', 'Home (tabs stay open)'],
       ['⇧ click', 'Peek a link'],
       ['⌥ ⌘ \\', 'Split view'],
       ['⇧ ⌘ F', 'Focus mode'],
@@ -84,7 +86,7 @@ export function Cheatsheet() {
           onClick={() => set({ cheatsheet: false })}
           data-testid="cheatsheet"
         >
-          <div className="absolute inset-0" style={{ background: 'var(--scrim)', backdropFilter: 'blur(6px)' }} />
+          <div className="absolute inset-0" style={{ background: 'var(--scrim)' }} />
           <div className="relative grid grid-cols-3 gap-4 px-8">
             {SHORTCUTS.map((g, gi) => (
               <motion.div

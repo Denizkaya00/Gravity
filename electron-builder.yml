@@ -8,6 +8,10 @@ files:
   - out/**
   - resources/icon.png
   - package.json
+# tor runs as a separate process, so it lives outside the asar (see scripts/fetch-tor.mjs).
+extraResources:
+  - from: resources/tor/${arch}
+    to: tor
 mac:
   category: public.app-category.productivity
   icon: build/icon.icns
@@ -23,7 +27,7 @@ mac:
   extendInfo:
     NSCameraUsageDescription: A website you are visiting wants to use your camera.
     NSMicrophoneUsageDescription: A website you are visiting wants to use your microphone.
-    NSLocationWhenInUseUsageDescription: A website you are visiting wants to know your location.
+    NSLocationWhenInUseUsageDescription: Gravity uses your location to match its background to sunrise and sunset, worked out on this Mac. Websites can ask for it too, with your permission.
     LSApplicationCategoryType: public.app-category.productivity
 protocols:
   - name: Web site URL

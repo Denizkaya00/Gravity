@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { X } from 'lucide-react'
 import { useBrowser, selectActiveTab } from '@/state/browser'
 import { useSettings } from '@/state/settings'
-import { openUrl } from '@/browser/actions'
+import { openFavorite } from '@/browser/favorites'
 import { Favicon } from '@/components/ui/Favicon'
 import { spring } from '@/lib/springs'
 import { cn } from '@/lib/utils'
@@ -18,13 +18,6 @@ export function Favorites() {
   const remove = useSettings((s) => s.removeFavorite)
   const active = useBrowser(selectActiveTab)
   if (!favorites.length) return null
-
-  const open = (url: string) => {
-    const B = useBrowser.getState()
-    const existing = (B.order[B.activeSpaceId] ?? []).map((id) => B.tabs[id]).find((t) => t && !t.peek && sameSite(t.url, url))
-    if (existing) B.activateTab(existing.id)
-    else openUrl(url, 'foreground')
-  }
 
   return (
     <div className="mt-2.5 grid grid-cols-4 gap-1.5">
@@ -46,7 +39,7 @@ export function Favorites() {
                 title={f.title || displayHost(f.url)}
                 whileTap={{ scale: 0.95 }}
                 transition={spring.snappy}
-                onClick={() => open(f.url)}
+                onClick={() => openFavorite(f)}
                 className={cn(
                   'flex h-10 w-full items-center justify-center rounded-[8px] border transition-colors',
                   isActive ? 'border-hairline-strong bg-active' : 'border-hairline bg-hover hover:bg-active'

@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
-import type { CommandEvent, MenuCommand } from '@shared/types'
+import type { CommandEvent, MenuCommand, OpenUrlRequest } from '@shared/types'
+import { zoomLabel } from '@shared/zoom'
 import { selectActiveSpace, snapshot, useBrowser } from '@/state/browser'
 import { runtimeOf, useRuntime } from '@/state/runtime'
 import { useSettings } from '@/state/settings'
 import { useUI } from '@/state/ui'
+import { bridgeName } from '@shared/tunnel'
 import {
   activeTabId,
   closePeek,
@@ -12,11 +14,15 @@ import {
   cycleTab,
   openUrl,
   selectTabIndex,
+  toggleHome,
   toggleSplit
 } from '@/browser/actions'
 import { page } from '@/browser/registry'
+import { toggleFavorite, watchFavorites } from '@/browser/favorites'
 import { openOverview } from '@/features/overview/openOverview'
 import { findAgain } from '@/features/find/FindBar'
+
+const pendingOpens: OpenUrlRequest[] = []
 
 /** Closes the top-most overlay. Returns true if something was closed. */
 export function closeTopOverlay(): boolean {
@@ -29,8 +35,6 @@ export function closeTopOverlay(): boolean {
   if (ui.findOpen) return ui.set({ findOpen: false }), true
   return false
 }
-
-const zoomLabel = (level: number) => `Zoom ${Math.round(Math.pow(1.2, level) * 100)}%`
 
 function handleCommand({ command, arg }: CommandEvent) {
   const B = useBrowser.getState()
@@ -71,12 +75,17 @@ function handleCommand({ command, arg }: CommandEvent) {
     'toggle-sidebar': () => void settings.update({ sidebarCollapsed: !settings.sidebarCollapsed }),
     'focus-mode': () => ui.set({ focusMode: !ui.focusMode }),
     'tab-overview': () => (ui.overview ? undefined : void openOverview()),
+    'go-home': () => toggleHome(),
     'toggle-split': () => toggleSplit(),
     'copy-url': () => copyActiveUrl(),
     'pin-tab': () => {
       if (!id) return
       B.togglePin(id)
       ui.toast(B.tabs[id]?.pinned ? 'Unpinned' : 'Pinned', 'check')
+    },
+    favorite: () => {
+      const tab = id ? B.tabs[id] : null
+      if (tab && /^https?:/.test(tab.url)) toggleFavorite(tab)
     },
     settings: () => ui.set({ settingsOpen: !ui.settingsOpen }),
     devtools: () => id && page.devtools(id),
@@ -101,19 +110,42 @@ export function useAppEffects() {
   // Boot: settings, session, and wiring for every main-process event.
   useEffect(() => {
     void useSettings.getState().load()
-    void window.gravity.session.load().then((data) => useBrowser.getState().hydrate(data))
+    void window.gravity.session.load().then((data) => {
+      useBrowser.getState().hydrate(data)
+      for (const r of pendingOpens.splice(0)) openUrl(r.url, r.mode)
+    })
 
     const offs = [
       window.gravity.onCommand(handleCommand),
-      window.gravity.onOpenUrl((r) => openUrl(r.url, r.mode)),
+      // Links can arrive (from other apps, or at launch) before the session has loaded;
+      // hydrating would wipe them, so hold them until the store is ready.
+      window.gravity.onOpenUrl((r) => {
+        if (useBrowser.getState().ready) openUrl(r.url, r.mode)
+        else pendingOpens.push(r)
+      }),
       window.gravity.shield.onBlocked(({ webContentsId, count }) => {
         const id = useRuntime.getState().byWebContents(webContentsId)
         if (id) useRuntime.getState().patch(id, { blocked: runtimeOf(id).blocked + count })
       }),
       window.gravity.downloads.onUpdate((d) => useUI.getState().upsertDownload(d)),
       window.gravity.permissions.onRequest((r) => useUI.getState().set({ permissions: [...useUI.getState().permissions, r] })),
-      window.gravity.onWindowState((s) => useUI.getState().set({ windowFullscreen: s.fullscreen }))
+      window.gravity.passwords.onOffer((o) =>
+        // A newer sign-in on the same page replaces the question about the older one.
+        useUI.getState().set({ passwordOffers: [...useUI.getState().passwordOffers.filter((x) => x.webContentsId !== o.webContentsId), o] })
+      ),
+      window.gravity.onWindowState((s) => useUI.getState().set({ windowFullscreen: s.fullscreen })),
+      watchFavorites(),
+      window.gravity.tunnel.onStatus((t) => {
+        const prev = useUI.getState().tunnel.state
+        useUI.getState().set({ tunnel: t })
+        if (t.state === 'on' && prev === 'connecting') {
+          const bridge = bridgeName(t.transport)
+          useUI.getState().toast(bridge ? `Tunnel connected through ${bridge}` : 'Tunnel connected through Tor', 'shield')
+        }
+        if (t.state === 'error' && prev !== 'error') useUI.getState().toast(t.message ?? 'The Tunnel stopped', 'warn')
+      })
     ]
+    void window.gravity.tunnel.get().then((t) => useUI.getState().set({ tunnel: t }))
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !useUI.getState().overview && closeTopOverlay()) e.preventDefault()
     }
@@ -195,11 +227,11 @@ export function useAppEffects() {
   }, [accent, space])
 
   // Native traffic lights follow the sidebar.
-  const collapsed = useSettings((s) => s.sidebarCollapsed)
   const focus = useUI((s) => s.focusMode)
   const hover = useUI((s) => s.sidebarHover)
   const fullscreenTab = useUI((s) => s.fullscreenTab)
   useEffect(() => {
-    window.gravity.setTrafficLights(!fullscreenTab && (!(collapsed || focus) || hover))
-  }, [collapsed, focus, hover, fullscreenTab])
+    // Collapsed keeps a slim title bar, so the traffic lights stay; only focus mode hides them.
+    window.gravity.setTrafficLights(!fullscreenTab && (!focus || hover))
+  }, [focus, hover, fullscreenTab])
 }

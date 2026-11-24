@@ -1,11 +1,29 @@
 import { motion, AnimatePresence } from 'motion/react'
-import { ArrowLeft, ArrowRight, RotateCw, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, House, RotateCw, X } from 'lucide-react'
 import { selectActiveTabId, useBrowser } from '@/state/browser'
 import { useRuntime } from '@/state/runtime'
 import { page } from '@/browser/registry'
+import { toggleHome } from '@/browser/actions'
 import { IconButton } from '@/components/ui/IconButton'
 
-export function NavButtons() {
+export function HomeButton() {
+  const id = useBrowser(selectActiveTabId)
+  // On Home the same button returns to the page you came from, if there is one.
+  const hasTabs = useBrowser((s) => (s.order[s.activeSpaceId] ?? []).some((t) => s.tabs[t] && !s.tabs[t].peek))
+  return (
+    <IconButton
+      label={id ? 'Home (⇧⌘H)' : 'Back to page (⇧⌘H)'}
+      active={!id && hasTabs}
+      disabled={!id && !hasTabs}
+      onClick={toggleHome}
+      data-testid="home-button"
+    >
+      <House size={14} />
+    </IconButton>
+  )
+}
+
+export function NavButtons({ home = true }: { home?: boolean }) {
   const id = useBrowser(selectActiveTabId)
   const canBack = useRuntime((s) => (id ? (s.tabs[id]?.canGoBack ?? false) : false))
   const canForward = useRuntime((s) => (id ? (s.tabs[id]?.canGoForward ?? false) : false))
@@ -13,6 +31,7 @@ export function NavButtons() {
 
   return (
     <div className="no-drag flex items-center gap-0.5">
+      {home && <HomeButton />}
       <IconButton label="Back (⌘[)" disabled={!canBack} onClick={() => id && page.back(id)}>
         <ArrowLeft size={15} />
       </IconButton>

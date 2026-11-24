@@ -1,5 +1,6 @@
 import { net } from 'electron'
 import type { SearchEngineId } from '@shared/types'
+import { appTunneled } from './tunnel'
 
 const ENDPOINTS: Record<SearchEngineId, (q: string) => string> = {
   google: (q) => `https://suggestqueries.google.com/complete/search?client=firefox&q=${q}`,
@@ -21,7 +22,7 @@ export async function suggest(query: string, engine: SearchEngineId): Promise<st
   if (hit) return hit
 
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 1500)
+  const timer = setTimeout(() => controller.abort(), appTunneled() ? 5000 : 1500)
   try {
     const res = await net.fetch(ENDPOINTS[engine](encodeURIComponent(q)), {
       signal: controller.signal,

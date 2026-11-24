@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="well-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2826"/>
+      <stop offset="1" stop-color="#151413"/>
+    </linearGradient>
+    <clipPath id="well-sq"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+    <linearGradient id="well-line" gradientUnits="userSpaceOnUse" x1="100" y1="0" x2="924" y2="0">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="0.28" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.72" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#well-bg)"/>
+  <g clip-path="url(#well-sq)">
+    <path d="M40 440 H200 C370 440 396 600 512 600 C628 600 654 440 824 440 H984" fill="none" stroke="url(#well-line)" stroke-width="12" stroke-linecap="round"/>
+  </g>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="184.5" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+</svg>

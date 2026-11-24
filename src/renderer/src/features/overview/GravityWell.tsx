@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, animate, frame as nextFrame, motion, motionValue, type MotionValue } from 'motion/react'
 import { Plus, Search, X } from 'lucide-react'
 import { prettyUrl } from '@shared/url'
 import { rankItems } from '@shared/rank'
@@ -11,6 +11,13 @@ import { MagicCard } from '@/components/magic/magic-card'
 import { Favicon } from '@/components/ui/Favicon'
 import { Kbd } from '@/components/ui/Kbd'
 import { fallEase, spring, tilt } from '@/lib/springs'
+import { SceneBackground } from '@/features/scenes/SceneBackground'
+import { useBlackHole } from '@/features/blackhole/store'
+import { useBlackHoleBackdrop } from '@/lib/theme'
+
+/** Where the hole sits in the Overview: a little below the middle of the window. */
+export const OVERVIEW_HOLE_CENTER: [number, number] = [0, -0.17]
+const HOLE_CENTER = OVERVIEW_HOLE_CENTER
 
 type Phase = 'enter' | 'grid' | 'exit'
 
@@ -59,6 +66,64 @@ function Well() {
   const [focus, setFocus] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const frameRect = useRef(frame)
+  const [fallen, setFallen] = useState<Set<string>>(() => new Set())
+  // In dark mode the window's own black hole moves in behind the cards; otherwise draw one here.
+  const backdrop = useBlackHoleBackdrop()
+
+  // Each card's vertical offset (drag and hover), so a fall can take over from it.
+  const lifts = useRef(new Map<string, MotionValue<number>>())
+  const lift = (id: string) => {
+    let v = lifts.current.get(id)
+    if (!v) lifts.current.set(id, (v = motionValue(0)))
+    return v
+  }
+
+  /**
+   * Closing a tab here sucks its card into the black hole: it is pulled
+   * straight toward the centre, speeding up and shrinking as it goes, and the
+   * disk flares when it arrives. One continuous curve, so it never stalls.
+   * `velocityY` carries a flick's momentum into the start of the fall.
+   */
+  const fallIn = (id: string, velocityY = 0) => {
+    if (fallen.has(id)) return
+    setFallen((f) => new Set(f).add(id))
+    // Animate the card's inner body, not the motion wrapper, so layout
+    // animations on the wrapper can't interrupt the fall.
+    const card = document.querySelector<HTMLElement>(`[data-well-id="${id}"]`)
+    const el = card?.querySelector<HTMLElement>('[data-fall]') ?? null
+    if (!card || !el) return closeTab(id)
+    const r = el.getBoundingClientRect()
+    const dx = window.innerWidth / 2 - (r.left + r.width / 2)
+    const dy = window.innerHeight * (0.5 - HOLE_CENTER[1]) - (r.top + r.height / 2)
+    // Stop the wrapper springing back from a drag, so the card falls from
+    // exactly where it is. The path below is drawn against the wrapper's live
+    // offset, so anything the wrapper still does (a hover ending) can't move it.
+    const wrapperY = lift(id)
+    wrapperY.stop()
+    const y0 = wrapperY.get()
+    const v0 = Math.max(-3000, Math.min(3000, velocityY))
+    const duration = 0.75
+    card.style.zIndex = '40'
+    card.style.pointerEvents = 'none'
+    el.style.willChange = 'transform, opacity, filter'
+    const draw = (p: number) => {
+      const pull = p ** 2.4 // accelerates the whole way in
+      const momentum = v0 * duration * p * (1 - p) ** 2 // matches the flick's speed at p = 0, gone by p = 1
+      const scale = 1 - 0.97 * p ** 1.5
+      const fade = Math.min(1, Math.max(0, (p - 0.55) / 0.45))
+      // Apply in the render step, after every motion value has updated this frame.
+      nextFrame.render(() => {
+        const y = y0 - wrapperY.get() + dy * pull + momentum
+        el.style.transform = `translate(${dx * pull}px, ${y}px) scale(${scale})`
+        el.style.opacity = String(1 - fade * fade * (3 - 2 * fade))
+        el.style.filter = fade > 0 ? `blur(${(5 * fade * fade).toFixed(2)}px)` : ''
+      })
+    }
+    void animate(0, 1, { duration, ease: 'linear', onUpdate: draw }).then(() => {
+      useBlackHole.getState().flare(0.8)
+      closeTab(id)
+    })
+  }
 
   const ids = useMemo(() => {
     const list = (order ?? []).filter((id) => tabs[id] && !tabs[id].peek)
@@ -99,7 +164,7 @@ function Well() {
 
   return (
     <motion.div
-      className="fixed inset-0 z-[65] flex flex-col"
+      className="theme-dark fixed inset-0 z-[65] flex flex-col"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.25, delay: 0.05 } }}
@@ -118,13 +183,16 @@ function Well() {
       data-testid="gravity-well"
     >
       <motion.div
-        className="absolute inset-0"
+        className={backdrop ? 'absolute inset-0' : 'absolute inset-0 bg-[#050505]'}
         initial={{ opacity: 0 }}
         animate={{ opacity: phase === 'exit' ? 0 : 1 }}
         transition={{ duration: 0.3 }}
-        style={{ background: 'color-mix(in srgb, var(--canvas) 88%, transparent)', backdropFilter: 'blur(18px)' }}
         onClick={() => choose(activeId)}
-      />
+      >
+        {!backdrop && <SceneBackground center={HOLE_CENTER} camera={{ distance: 52, inclination: 0.14 }} exposure={0.85} />}
+        {/* Over a page, darken it fully; the black hole shows through the lower half. */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/45 to-black/10" />
+      </motion.div>
 
       <motion.div
         className="drag relative flex items-center gap-4 px-10 pt-9 pb-6"
@@ -171,22 +239,24 @@ function Well() {
                       ? { opacity: 0, y: 40, transition: { duration: 0.28, ease: fallEase, delay: i * 0.01 } }
                       : { opacity: 1, y: 0, rotate: 0, transition: { ...spring.settle, delay: Math.min(i * 0.025, 0.25) } }
                   }
-                  exit={{ opacity: 0, y: -260, transition: { duration: 0.34, ease: [0.3, 0, 0.8, 0.2] } }}
+                  exit={fallen.has(id) ? { opacity: 0, transition: { duration: 0 } } : { opacity: 0, y: 20, transition: { duration: 0.2 } }}
                   transition={spring.heavy}
                   drag="y"
                   dragSnapToOrigin
                   dragElastic={{ top: 0.9, bottom: 0.15 }}
                   dragConstraints={{ top: 0, bottom: 0 }}
                   onDragEnd={(_e, info) => {
-                    if (info.offset.y < -110 || info.velocity.y < -650) closeTab(id)
+                    if (info.offset.y < -110 || info.velocity.y < -650) fallIn(id, info.velocity.y)
                   }}
                   whileHover={{ y: -2 }}
                   whileDrag={{ scale: 1.01 }}
                   onClick={() => choose(id)}
                   className="group relative"
-                  style={{ borderRadius: 10 }}
+                  style={{ borderRadius: 10, y: lift(id) }}
                   data-testid="well-card"
+                  data-well-id={id}
                 >
+                  <div data-fall>
                   <MagicCard
                     className="rounded-[10px] shadow-[var(--shadow)]"
                     gradientSize={260}
@@ -211,7 +281,7 @@ function Well() {
                         title="Close tab (or flick the card up)"
                         onClick={(e) => {
                           e.stopPropagation()
-                          closeTab(id)
+                          fallIn(id)
                         }}
                         className="rounded-[5px] p-1 text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-hover hover:text-text"
                       >
@@ -219,6 +289,7 @@ function Well() {
                       </button>
                     </div>
                   </MagicCard>
+                  </div>
                 </motion.div>
               )
             })}

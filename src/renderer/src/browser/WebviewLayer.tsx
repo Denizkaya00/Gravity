@@ -69,6 +69,13 @@ function TabSurface({ id, slot }: { id: string; slot: SlotName | undefined }) {
   const isPeek = slot === 'peek'
   const isFull = slot === 'full'
 
+  // A tab without a slot is hidden but still running; its video waits until it's back.
+  const webContentsId = useRuntime((s) => s.tabs[id]?.webContentsId)
+  const inView = !!slot
+  useEffect(() => {
+    if (webContentsId) window.gravity.setTabInView(webContentsId, inView)
+  }, [webContentsId, inView])
+
   // Peek pages spring out of the click point.
   const initial = isPeek && peekOrigin
     ? {
@@ -124,7 +131,9 @@ export function WebviewLayer() {
   const mounted = useRuntime((s) => s.mounted)
   const tabs = useBrowser((s) => s.tabs)
   useMountAndSleep(assigned)
-  const live = mounted.filter((id) => tabs[id])
+  // A fixed order, not `mounted`'s most-recent-first: reordering would make React move <webview>s in the DOM,
+  // and a moved <webview> starts over as a new page, losing its history, form text and undo.
+  const live = mounted.filter((id) => tabs[id]).sort()
   return (
     <AnimatePresence>
       {live.map((id) => (

@@ -1,4 +1,4 @@
-import { app, type Session, type WebContents } from 'electron'
+import { app, ipcMain, net, type Session, type WebContents } from 'electron'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ElectronBlocker } from '@ghostery/adblocker-electron'
@@ -27,7 +27,8 @@ function flush(): void {
 async function load(): Promise<ElectronBlocker | null> {
   if (blocker) return blocker
   if (!loading) {
-    loading = ElectronBlocker.fromPrebuiltAdsAndTracking(globalThis.fetch, {
+    // net.fetch (not Node's fetch) so the download follows the Tunnel when it's on.
+    loading = ElectronBlocker.fromPrebuiltAdsAndTracking((url: string) => net.fetch(url), {
       path: join(process.env.GRAVITY_USER_DATA ?? app.getPath('userData'), 'shield-engine.bin'),
       read: async (p) => new Uint8Array(await readFile(p)),
       write: async (p, buf) => writeFile(p, buf)
@@ -51,12 +52,23 @@ async function load(): Promise<ElectronBlocker | null> {
   return loading
 }
 
+/**
+ * The engine registers two global IPC handlers every time it is enabled in a
+ * session, and a second registration throws. Both handlers delegate to the same
+ * blocker, so drop the previous ones before enabling another session.
+ */
+function enableIn(b: ElectronBlocker, ses: Session): void {
+  ipcMain.removeHandler('@ghostery/adblocker/inject-cosmetic-filters')
+  ipcMain.removeHandler('@ghostery/adblocker/is-mutation-observer-enabled')
+  b.enableBlockingInSession(ses)
+}
+
 /** Registers a session the Shield should protect (applies the current on/off state). */
 export async function protectSession(ses: Session): Promise<void> {
   sessions.add(ses)
   if (!enabled) return
   const b = await load()
-  if (b && enabled && !b.isBlockingEnabled(ses)) b.enableBlockingInSession(ses)
+  if (b && enabled && !b.isBlockingEnabled(ses)) enableIn(b, ses)
 }
 
 export async function setShieldEnabled(on: boolean): Promise<void> {
@@ -65,7 +77,7 @@ export async function setShieldEnabled(on: boolean): Promise<void> {
   if (!b) return
   for (const ses of sessions) {
     const active = b.isBlockingEnabled(ses)
-    if (on && !active) b.enableBlockingInSession(ses)
+    if (on && !active) enableIn(b, ses)
     if (!on && active) b.disableBlockingInSession(ses)
   }
 }

@@ -1,7 +1,9 @@
 import { create } from 'zustand'
-import type { DownloadInfo, PermissionRequest } from '@shared/types'
+import type { DownloadInfo, PermissionRequest, TunnelStatus } from '@shared/types'
+import type { PasswordOffer } from '@shared/passwords'
 
-export type CommandMode = 'new' | 'edit' | 'split'
+/** `pin` picks a page for Favorites instead of opening one. */
+export type CommandMode = 'new' | 'edit' | 'split' | 'pin'
 
 export interface Toast {
   id: number
@@ -24,6 +26,10 @@ interface UIState {
   sidebarHover: boolean
   cheatsheet: boolean
   settingsOpen: boolean
+  /** A Settings row to scroll to when the sheet opens, such as 'tunnel'. */
+  settingsFocus: string | null
+  /** Which page of Settings is showing. */
+  settingsPage: 'main' | 'passwords'
   downloadsOpen: boolean
   findOpen: boolean
   fullscreenTab: string | null
@@ -34,11 +40,14 @@ interface UIState {
   splitDrop: 'left' | 'right' | null
   toasts: Toast[]
   permissions: PermissionRequest[]
+  /** Sign-ins Gravity is asking to save, newest last. */
+  passwordOffers: PasswordOffer[]
   downloads: DownloadInfo[]
   /** Increments when a new download starts, to fire the fly-to-orb animation. */
   downloadPulse: number
   /** Increments when a download completes, to fire confetti. */
   downloadDone: number
+  tunnel: TunnelStatus
 
   openCommand: (mode: CommandMode, initial?: string) => void
   closeCommand: () => void
@@ -57,6 +66,8 @@ export const useUI = create<UIState>((set, get) => ({
   sidebarHover: false,
   cheatsheet: false,
   settingsOpen: false,
+  settingsFocus: null,
+  settingsPage: 'main',
   downloadsOpen: false,
   findOpen: false,
   fullscreenTab: null,
@@ -65,9 +76,11 @@ export const useUI = create<UIState>((set, get) => ({
   splitDrop: null,
   toasts: [],
   permissions: [],
+  passwordOffers: [],
   downloads: [],
   downloadPulse: 0,
   downloadDone: 0,
+  tunnel: { state: 'off', progress: 0 },
 
   openCommand: (mode, initial) => set({ command: { open: true, mode, initial }, overview: false, cheatsheet: false }),
   closeCommand: () => set((s) => ({ command: { ...s.command, open: false } })),

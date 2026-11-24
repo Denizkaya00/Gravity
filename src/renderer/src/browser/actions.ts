@@ -5,6 +5,7 @@ import { useRuntime } from '@/state/runtime'
 import { useSettings } from '@/state/settings'
 import { useUI } from '@/state/ui'
 import { page } from './registry'
+import { useBlackHole } from '@/features/blackhole/store'
 
 export function activeTabId(): string | null {
   return selectActiveTabId(useBrowser.getState())
@@ -69,11 +70,39 @@ export function closeTab(id: string): void {
   if (ui.fullscreenTab === id) ui.set({ fullscreenTab: null })
   useBrowser.getState().closeTab(id)
   useRuntime.getState().forget(id)
+  // Whatever you close falls in: the disk flares a little.
+  useBlackHole.getState().flare(0.45)
 }
 
 export function closePeek(): void {
   const peek = useUI.getState().peek
   if (peek) closeTab(peek.tabId)
+}
+
+/** The tab you were last on in the active space, if any. */
+export function lastTabId(): string | null {
+  const B = useBrowser.getState()
+  const list = (B.order[B.activeSpaceId] ?? []).filter((id) => B.tabs[id] && !B.tabs[id].peek)
+  return list.sort((a, b) => B.tabs[b].lastActiveAt - B.tabs[a].lastActiveAt)[0] ?? null
+}
+
+/**
+ * Home without closing anything: the page steps aside and its tab stays in the
+ * sidebar. Pressed again on Home, it returns to the page you came from.
+ */
+export function toggleHome(): void {
+  const ui = useUI.getState()
+  if (ui.overview) return
+  if (ui.command.open) ui.closeCommand()
+  if (ui.peek) closePeek()
+  const B = useBrowser.getState()
+  if (activeTabId()) {
+    ui.set({ findOpen: false })
+    B.goHome()
+    return
+  }
+  const last = lastTabId()
+  if (last) B.activateTab(last)
 }
 
 export function expandPeek(): void {
@@ -157,5 +186,6 @@ export function clearSpace(): void {
   const items = B.archive(ids)
   for (const id of ids) useRuntime.getState().forget(id)
   if (items.length) window.gravity.archive.add(items)
+  useBlackHole.getState().flare(Math.min(1, 0.3 + ids.length * 0.12))
   useUI.getState().toast(`Archived ${ids.length} tab${ids.length === 1 ? '' : 's'}`, 'archive')
 }

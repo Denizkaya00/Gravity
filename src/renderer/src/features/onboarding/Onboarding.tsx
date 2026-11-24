@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react'
 import { useSettings } from '@/state/settings'
 import { Kbd } from '@/components/ui/Kbd'
 import { ACCENTS } from '@/features/settings/SettingsSheet'
-import { GravityField } from '@/features/newtab/GravityField'
+import { BlackHole } from '@/features/blackhole/BlackHole'
 import { fallEase, spring } from '@/lib/springs'
 import { cn } from '@/lib/utils'
 
@@ -68,14 +68,18 @@ export function Onboarding() {
     <AnimatePresence>
       {loaded && !onboarded && (
         <motion.div
-          className="grain fixed inset-0 z-[100] overflow-hidden bg-canvas"
+          className="theme-dark fixed inset-0 z-[100] overflow-hidden bg-[#050505]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.4 } }}
           data-testid="onboarding"
         >
           <div className="drag absolute inset-x-0 top-0 h-10" />
-          <GravityField className="absolute inset-0 h-full w-full opacity-70" />
+          {/* The first thing you see: falling toward a black hole from far away. */}
+          <div className="absolute inset-0">
+            <BlackHole center={[0.42, 0.02]} camera={{ distance: 24, inclination: 0.12 }} introDistance={80} exposure={0.95} />
+          </div>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent" />
 
           <div className="absolute top-12 left-14">
             <Wordmark />
@@ -96,7 +100,7 @@ export function Onboarding() {
                     accounts. Everything you open has a little weight, and settles where you put it.
                   </p>
                   <div className="mt-10">
-                    <PrimaryButton onClick={() => setStep(1)} testId="onboarding-next">
+                    <PrimaryButton onClick={() => setStep(1)} testId="onboarding-step-1">
                       Continue <ArrowRight size={14} />
                     </PrimaryButton>
                   </div>
@@ -137,7 +141,7 @@ export function Onboarding() {
                   </div>
 
                   <div className="mt-12">
-                    <PrimaryButton onClick={() => setStep(2)} testId="onboarding-next">
+                    <PrimaryButton onClick={() => setStep(2)} testId="onboarding-step-2">
                       Continue <ArrowRight size={14} />
                     </PrimaryButton>
                   </div>
