@@ -91,9 +91,14 @@ export function buildMenu(getWin: () => BrowserWindow | null): void {
         item('Reload Ignoring Cache', 'Cmd+Shift+R', 'hard-reload'),
         item('Stop', 'Cmd+.', 'stop'),
         { type: 'separator' },
-        item('Zoom In', 'Cmd+Plus', 'zoom-in'),
-        alias('Cmd+=', 'zoom-in'),
+        // ⌘= rather than ⌘+: on layouts where + needs Shift+4 (Turkish Q), ⌘+ is ⇧⌘4, which macOS
+        // takes for a screenshot. ⌘* is the unshifted key beside 0 there, as = is on US keyboards.
+        item('Zoom In', 'Cmd+=', 'zoom-in'),
+        alias('Cmd+Plus', 'zoom-in'),
+        alias('Cmd+*', 'zoom-in'),
+        alias('Cmd+numadd', 'zoom-in'),
         item('Zoom Out', 'Cmd+-', 'zoom-out'),
+        alias('Cmd+numsub', 'zoom-out'),
         item('Actual Size', 'Cmd+0', 'zoom-reset'),
         { type: 'separator' },
         { role: 'togglefullscreen' },

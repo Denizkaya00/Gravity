@@ -37,7 +37,7 @@ export const SHORTCUTS: { group: string; items: [string, string][] }[] = [
       ['⌘ [  ⌘ ]', 'Back / forward'],
       ['⌘ R', 'Reload'],
       ['⌘ F', 'Find on page'],
-      ['⌘ +  ⌘ −', 'Zoom'],
+      ['⌘ =  ⌘ −', 'Zoom'],
       ['⇧ ⌘ C', 'Copy URL'],
       ['⌥ ⌘ I', 'Developer tools'],
       ['⌥ ⌘ L', 'Downloads']
