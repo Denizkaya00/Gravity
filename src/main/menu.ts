@@ -3,7 +3,7 @@ import type { CommandEvent, MenuCommand } from '@shared/types'
 import { sendCommand } from './webviews'
 import { setDefaultBrowser } from './defaultBrowser'
 
-export const REPO_URL = 'https://github.com/OWNER/gravity'
+export const REPO_URL = 'https://github.com/Denizkaya00/gravity'
 
 export function buildMenu(getWin: () => BrowserWindow | null): void {
   const send = (command: MenuCommand, arg?: CommandEvent['arg']) => () => {

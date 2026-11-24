@@ -5,10 +5,10 @@
   "description": "A quiet, keyboard-first browser for macOS, with a little physics.",
   "author": "Gravity contributors",
   "license": "MIT",
-  "homepage": "https://github.com/OWNER/gravity",
+  "homepage": "https://github.com/Denizkaya00/gravity",
   "repository": {
     "type": "git",
-    "url": "https://github.com/OWNER/gravity.git"
+    "url": "https://github.com/Denizkaya00/gravity.git"
   },
   "keywords": [
     "browser",

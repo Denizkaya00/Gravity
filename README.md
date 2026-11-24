@@ -71,7 +71,7 @@ Holding `⌘` for a moment shows the full list.
 There are no signed releases yet. To build your own:
 
 ```bash
-git clone https://github.com/OWNER/gravity.git
+git clone https://github.com/Denizkaya00/gravity.git
 cd gravity
 npm install
 npm run dist

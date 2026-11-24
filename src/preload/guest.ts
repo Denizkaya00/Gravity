@@ -5,12 +5,26 @@
  *  - horizontal overscroll (for two-finger swipe back/forward)
  *  - shift-clicks on links (for Peek)
  * and fills and offers to save passwords (see autofill.ts).
+ * The one thing it does in the page's own world is turn off the Badging API.
  */
-import { ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 import { GUEST } from '../shared/ipc'
 import { installAutofill } from './autofill'
 
 installAutofill()
+
+// Sites can't put a badge on the Dock icon: Electron turns navigator.setAppBadge()
+// (unread counts from mail and chat sites) straight into app.dock.setBadge().
+contextBridge.executeInMainWorld({
+  func: () => {
+    const noop = (): Promise<void> => Promise.resolve()
+    for (const name of ['setAppBadge', 'clearAppBadge']) {
+      if (name in Navigator.prototype) {
+        Object.defineProperty(Navigator.prototype, name, { value: noop, writable: false, configurable: false })
+      }
+    }
+  }
+})
 
 function canScrollX(el: Element | null, dx: number): boolean {
   let node: Element | null = el
