@@ -72,7 +72,7 @@ There are no signed releases yet. To build your own:
 
 ```bash
 git clone https://github.com/Denizkaya00/Gravity.git
-cd gravity
+cd Gravity
 npm install
 npm run dist
 ```

@@ -19,3 +19,6 @@ resources/tor/
 *.key
 *.p12
 *.provisionprofile
+
+# Logo drafts (the chosen one is resources/icon.svg)
+resources/logo-concepts/
