@@ -1,0 +1,11 @@
+node_modules/
+out/
+dist/
+test-results/
+playwright-report/
+*.tsbuildinfo
+*.log
+.DS_Store
+.env
+.env.*
+build/icon.iconset/

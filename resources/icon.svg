@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2a2826"/>
+      <stop offset="1" stop-color="#151413"/>
+    </linearGradient>
+    <radialGradient id="fade" cx="50%" cy="52%" r="50%">
+      <stop offset="0" stop-color="#fff" stop-opacity="1"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <mask id="m"><rect width="1024" height="1024" fill="url(#fade)"/></mask>
+    <clipPath id="sq"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <g clip-path="url(#sq)">
+    <g mask="url(#m)" fill="none" stroke="#e8e4dc" stroke-width="5">
+      <ellipse cx="512" cy="540" rx="38" ry="15" stroke-opacity="0.9"/>
+      <ellipse cx="512" cy="546" rx="78" ry="31" stroke-opacity="0.75"/>
+      <ellipse cx="512" cy="554" rx="134" ry="54" stroke-opacity="0.6"/>
+      <ellipse cx="512" cy="564" rx="206" ry="84" stroke-opacity="0.48"/>
+      <ellipse cx="512" cy="576" rx="294" ry="120" stroke-opacity="0.36"/>
+      <ellipse cx="512" cy="590" rx="398" ry="163" stroke-opacity="0.26"/>
+      <ellipse cx="512" cy="606" rx="518" ry="212" stroke-opacity="0.18"/>
+    </g>
+    <circle cx="512" cy="470" r="44" fill="#b4694a"/>
+  </g>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="184.5" fill="none" stroke="#ffffff" stroke-opacity="0.08"/>
+</svg>

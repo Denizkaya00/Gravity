@@ -1,0 +1,199 @@
+@import 'tailwindcss';
+
+/*
+ * Gravity's palette is deliberately quiet: warm graphite and paper neutrals,
+ * hairline rules, and one muted accent used sparingly.
+ */
+@property --tint {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #b4694a;
+}
+@property --space-a {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #8a857c;
+}
+@property --space-b {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #8a857c;
+}
+@property --space-c {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #8a857c;
+}
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #b4694a;
+}
+
+:root {
+  --text: #e8e4dc;
+  --text-dim: rgb(232 228 220 / 0.62);
+  --text-faint: rgb(232 228 220 / 0.36);
+  --window: rgb(23 22 20 / 0.92);
+  --glass: rgb(30 29 27 / 0.92);
+  --glass-strong: rgb(27 26 24 / 0.97);
+  --hover: rgb(255 250 240 / 0.045);
+  --active: rgb(255 250 240 / 0.08);
+  --hairline: rgb(255 250 240 / 0.085);
+  --hairline-strong: rgb(255 250 240 / 0.16);
+  --frame-bg: #121211;
+  --canvas: #141413;
+  --scrim: rgb(10 10 9 / 0.55);
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 12px 32px -12px rgb(0 0 0 / 0.55);
+  --grain-opacity: 0.05;
+  color-scheme: dark;
+  transition:
+    --tint 0.6s ease,
+    --space-a 0.6s ease,
+    --accent 0.4s ease;
+}
+
+:root.light {
+  --text: #1c1b19;
+  --text-dim: rgb(28 27 25 / 0.62);
+  --text-faint: rgb(28 27 25 / 0.4);
+  --window: rgb(236 233 227 / 0.94);
+  --glass: rgb(248 246 242 / 0.94);
+  --glass-strong: rgb(251 250 247 / 0.98);
+  --hover: rgb(40 32 20 / 0.045);
+  --active: rgb(40 32 20 / 0.08);
+  --hairline: rgb(40 32 20 / 0.1);
+  --hairline-strong: rgb(40 32 20 / 0.2);
+  --frame-bg: #ffffff;
+  --canvas: #f4f2ee;
+  --scrim: rgb(236 233 227 / 0.6);
+  --shadow: 0 1px 2px rgb(40 32 20 / 0.08), 0 12px 32px -14px rgb(40 32 20 / 0.25);
+  --grain-opacity: 0.035;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-text: var(--text);
+  --color-dim: var(--text-dim);
+  --color-faint: var(--text-faint);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-hover: var(--hover);
+  --color-active: var(--active);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-tint: var(--tint);
+  --color-accent: var(--accent);
+  --color-canvas: var(--canvas);
+  --color-background: var(--frame-bg);
+  --color-border: var(--hairline);
+  --color-foreground: var(--text);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', system-ui, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+  font-size: 13px;
+}
+
+input,
+textarea,
+[contenteditable] {
+  user-select: text;
+}
+
+button {
+  cursor: default;
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(1.1);
+  border: 1px solid var(--hairline);
+}
+.glass-strong {
+  background: var(--glass-strong);
+  backdrop-filter: blur(24px) saturate(1.1);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+}
+
+/* Small uppercase monospace labels: section headers, metadata, counters. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* A faint static film grain, so large flat areas don't feel synthetic. */
+.grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Guests are transparent by default; real browsers paint pages on white. */
+webview {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  background: #ffffff;
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
+}
+
+@custom-variant dark (&:is(.dark *));

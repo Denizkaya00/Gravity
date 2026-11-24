@@ -1,0 +1,41 @@
+appId: app.gravity.browser
+productName: Gravity
+copyright: Copyright © 2026 Gravity contributors
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - resources/icon.png
+  - package.json
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSCameraUsageDescription: A website you are visiting wants to use your camera.
+    NSMicrophoneUsageDescription: A website you are visiting wants to use your microphone.
+    NSLocationWhenInUseUsageDescription: A website you are visiting wants to know your location.
+    LSApplicationCategoryType: public.app-category.productivity
+protocols:
+  - name: Web site URL
+    role: Viewer
+    schemes: [http, https]
+fileAssociations:
+  - ext: [html, htm, xhtml]
+    name: HTML document
+    role: Viewer
+dmg:
+  title: Gravity ${version}
+  window:
+    width: 540
+    height: 360
+publish: null
