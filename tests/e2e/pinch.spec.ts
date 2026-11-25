@@ -53,30 +53,30 @@ test('pinch zooms the page, keyboard zoom still works, pinching in at 100% opens
 
   // Spreading zooms the page in, following the fingers.
   await trackpad(app, win, { pinch: 1.5 })
-  expect(await zoomFactor(app)).toBeCloseTo(1.5, 1)
+  await expect.poll(() => zoomFactor(app)).toBeCloseTo(1.5, 1)
   await expect(toast.filter({ hasText: /Zoom 1(49|50|51)%/ })).toBeVisible()
 
   // ⌘+ continues from there on the keyboard's grid, ⌘0 resets.
   await command(app, { command: 'zoom-in' })
   await expect(toast.filter({ hasText: 'Zoom 158%' })).toBeVisible()
   await command(app, { command: 'zoom-reset' })
-  expect(await zoomFactor(app)).toBe(1)
+  await expect.poll(() => zoomFactor(app)).toBe(1)
 
   // Pinching in from above 100% stops at 100% and doesn't open the Gravity Well.
   await command(app, { command: 'zoom-in' })
   await trackpad(app, win, { pinch: 0.4 })
-  expect(await zoomFactor(app)).toBe(1)
+  await expect.poll(() => zoomFactor(app)).toBe(1)
   await expect(win.getByTestId('gravity-well')).toHaveCount(0)
 
   // A small pinch in at 100% does nothing.
   await trackpad(app, win, { pinch: 0.85 })
-  expect(await zoomFactor(app)).toBe(1)
+  await expect.poll(() => zoomFactor(app)).toBe(1)
   await expect(win.getByTestId('gravity-well')).toHaveCount(0)
 
   // A real pinch in at 100% falls into the Gravity Well.
   await trackpad(app, win, { pinch: 0.5 })
   await expect(win.getByTestId('gravity-well')).toBeVisible()
-  expect(await zoomFactor(app)).toBe(1)
+  await expect.poll(() => zoomFactor(app)).toBe(1)
   await win.keyboard.press('Escape')
   await expect(win.getByTestId('gravity-well')).toHaveCount(0, { timeout: 5_000 })
 
@@ -96,7 +96,7 @@ test('pinch works with reduced motion', async () => {
   const { app, win } = await launch({ settings: { motion: 'never' } })
   await openPage(app, win, `${site.url}/`)
   await trackpad(app, win, { pinch: 1.3 })
-  expect(await zoomFactor(app)).toBeCloseTo(1.3, 1)
+  await expect.poll(() => zoomFactor(app)).toBeCloseTo(1.3, 1)
   await command(app, { command: 'zoom-reset' })
   await trackpad(app, win, { pinch: 0.5 })
   await expect(win.getByTestId('gravity-well')).toBeVisible()
